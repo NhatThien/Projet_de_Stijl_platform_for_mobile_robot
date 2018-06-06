@@ -48,6 +48,8 @@ RT_MUTEX mutex_robotStarted;
 RT_MUTEX mutex_move;
 RT_MUTEX mutex_failedCom;
 RT_MUTEX mutex_getimage;
+RT_MUTEX mutex_arenereponse;
+RT_MUTEX mutex_drawarena;
 
 // Déclaration des sémaphores
 // Déclaration des évenements -> definition dans main.cpp et function.h
@@ -70,12 +72,18 @@ int MSG_QUEUE_SIZE = 10;
 
 // Déclaration des ressources partagées -> definition dans main.cpp et function.h
 //-> créer mutex pour affecter les valeurs
-int etatCommMoniteur = 1;
 int robotStarted = 0;
 char move = DMB_STOP_MOVE;
 int failedCom = 0;
 bool getimage = true;
 int arenereponse=-1;
+bool drawArena = false;
+
+/* ressources partagées sans mutex (TODO ?) */
+int etatCommMoniteur = 1;
+
+Camera c;
+Arene arene;
 
 /**
  * \fn void initStruct(void)
@@ -133,7 +141,15 @@ void initStruct(void) {
         printf("Error mutex create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
-
+    if (err = rt_mutex_create(&mutex_arenereponse, NULL)) {
+        printf("Error mutex create: %s\n", strerror(-err));
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_mutex_create(&mutex_drawarena, NULL)) {
+        printf("Error mutex create: %s\n", strerror(-err));
+        exit(EXIT_FAILURE);
+    }
+    
     /* Creation du semaphore */
     if (err = rt_sem_create(&sem_barrier, NULL, 0, S_FIFO)) {
         printf("Error semaphore create: %s\n", strerror(-err));
@@ -164,6 +180,10 @@ void initStruct(void) {
         exit(EXIT_FAILURE);
     }
     if (err = rt_sem_create(&sem_arena, NULL, 0, S_FIFO)) {
+        printf("Error semaphore create: %s\n", strerror(-err));
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_sem_create(&sem_ask_arena, NULL, 0, S_FIFO)) {
         printf("Error semaphore create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
@@ -246,10 +266,10 @@ void startTasks() {
         printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
-    /*if (err = rt_task_start(&th_checkBat, &f_checkBat, NULL)) {
+    if (err = rt_task_start(&th_checkBat, &f_checkBat, NULL)) {
         printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
-    }*/
+    }
     if (err = rt_task_start(&th_openCam, &f_openCam, NULL)) {
         printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);

@@ -117,15 +117,28 @@ void f_receiveFromMon(void *arg) {
                 rt_sem_v(&sem_openCam);
             } else if (msg.data[0] == CAM_ASK_ARENA) {
                 rt_sem_v(&sem_ask_arena);
+#ifdef _WITH_TRACE_
+                printf("receive from monitor ask arena");
+#endif
             } else if (msg.data[0] == CAM_COMPUTE_POSITION) {
                 rt_sem_v(&sem_computePosition);
             } else if (msg.data[0] == CAM_STOP_COMPUTE_POSITION) {
                 rt_sem_v(&sem_stopComputePos);
             } else if (msg.data[0] == CAM_ARENA_CONFIRM) {
+                rt_mutex_acquire(&mutex_arenereponse, TM_INFINITE);
                 arenereponse = 1;
+                rt_mutex_release(&mutex_arenereponse);
+                #ifdef _WITH_TRACE_
+                printf("receive from monitor arena confirm");
+#endif
                 rt_sem_v(&sem_arena);
             } else if (msg.data[0] == CAM_ARENA_INFIRM) {
+                rt_mutex_acquire(&mutex_arenereponse, TM_INFINITE);
                 arenereponse = 0;
+                rt_mutex_release(&mutex_arenereponse);
+                #ifdef _WITH_TRACE_
+                printf("infirm arena");
+#endif
                 rt_sem_v(&sem_arena);
             } else if (msg.data[0] == CAM_CLOSE) {
                 rt_sem_v(&sem_closeCam);
@@ -162,6 +175,9 @@ void f_openComRobot(void * arg) {
             write_in_queue(&q_messageToMon, msg);
         } else {
             MessageToMon msg;
+            #ifdef _WITH_TRACE_
+        printf("lost connection\n");
+    #endif
             set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
             write_in_queue(&q_messageToMon, msg);
         }
@@ -207,7 +223,9 @@ void f_startRobot(void * arg) {
             rt_mutex_acquire(&mutex_failedCom, TM_INFINITE);
             failedCom++;
             rt_mutex_release(&mutex_failedCom);
-
+#ifdef _WITH_TRACE_
+        printf("lost connection\n");
+    #endif
             set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
             write_in_queue(&q_messageToMon, msg);
         }
@@ -278,7 +296,9 @@ void f_checkBat(void * arg) {
                 rt_mutex_acquire(&mutex_failedCom, TM_INFINITE);
                 failedCom++;
                 rt_mutex_release(&mutex_failedCom);
-
+#ifdef _WITH_TRACE_
+        printf("lost connection\n");
+    #endif
                 set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
                 write_in_queue(&q_messageToMon, msg);
             } else {
@@ -297,6 +317,7 @@ void f_checkBat(void * arg) {
             close_communication_robot();
         }
     }
+    
 }
 
 void f_openCam(void * arg) {
@@ -304,7 +325,9 @@ void f_openCam(void * arg) {
     rt_task_inquire(NULL, &info);
     printf("Init %s\n", info.name);
 
-    Camera c;
+    Image imageoriginal;
+    Image imagesortie;
+    Jpg imagecompress;
     MessageToMon msg;
     int err;
 
@@ -317,6 +340,9 @@ void f_openCam(void * arg) {
 #endif
 
     if ((err = open_camera(&c)) == -1) {
+        #ifdef _WITH_TRACE_
+        printf("lost connection cam\n");
+    #endif
         set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
         write_in_queue(&q_messageToMon, msg);
     } else {
@@ -326,12 +352,22 @@ void f_openCam(void * arg) {
         rt_task_set_periodic(NULL, TM_NOW, 100000000);
         while (1) {
             rt_task_wait_period(NULL);
+            
+            
             //TODO variable partagé getimage
             if (getimage) {
-                Image imageoriginal;                
+                           
                 get_image(&c, &imageoriginal);
-                Jpg imagecompress;
-                compress_image(&imageoriginal, &imagecompress);
+                
+                // si drawArena = true, on dessine l'arene sur l'image capturé
+                if (drawArena) {
+                    draw_arena(&imageoriginal, &imagesortie, &arene);
+                    compress_image(&imagesortie, &imagecompress);
+                }
+                else {
+                    compress_image(&imageoriginal, &imagecompress);
+                }
+                
                 send_message_to_monitor(HEADER_STM_IMAGE, &imagecompress);
             }
         }
@@ -343,61 +379,81 @@ void f_arene(void * arg) {
     rt_task_inquire(NULL, &info);
     printf("Init %s\n", info.name);
     
-    Camera c;
     MessageToMon msg;
     Image imageoriginal, imagesortie;
-    Arene * arene;
     Jpg imagecompress;
     int err;
     
+    while(1) {
+    #ifdef _WITH_TRACE_
+        printf("ask_arene\n");
+    #endif
+        rt_sem_p(&sem_ask_arena,TM_INFINITE);
+
+        // changer la variable partagée
+        rt_mutex_acquire(&mutex_getimage, TM_INFINITE);
+        getimage = false;
+        rt_mutex_release(&mutex_getimage);
+
+    #ifdef _WITH_TRACE_
+        printf("get image false\n");
+    #endif
+        get_image(&c, &imageoriginal);
 #ifdef _WITH_TRACE_
-    printf("ask_arene\n");
-#endif
-    rt_sem_p(&sem_ask_arena,TM_INFINITE);
-
-    // changer la variable partagée
-    rt_mutex_acquire(&mutex_getimage, TM_INFINITE);
-    getimage = false;
-    rt_mutex_release(&mutex_getimage);
-
-#ifdef _WITH_TRACE_
-    printf("get image false\n");
-#endif
-    get_image(&c, &imageoriginal);
-
-    if (detect_arena(&imageoriginal, arene) == -1) {
-        set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
-        write_in_queue(&q_messageToMon, msg);
-    } else {
-           draw_arena(&imageoriginal, &imagesortie, arene);
-        // a voir TODO
-           Jpg imagecompress;
-           compress_image(&imagesortie, &imagecompress);
-           send_message_to_monitor(HEADER_STM_IMAGE, &imagecompress);
-    
-             rt_sem_p(&sem_arena, TM_INFINITE);
-        if (arenereponse == 0) {
-            //infirm
-
-#ifdef _WITH_TRACE_
-    printf("infirm arene\n");
-#endif
-        } else if (arenereponse == 1) {
-            //confirm
- #ifdef _WITH_TRACE_
-    printf("confirm arene\n");
-#endif
+        printf("getted image\n");
+    #endif
+        if (detect_arena(&imageoriginal, &arene) == -1) {
+            #ifdef _WITH_TRACE_
+        printf("failed to detect arena\n");
+    #endif
+            set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
+            write_in_queue(&q_messageToMon, msg);
         } else {
-            // lost connection
-#ifdef _WITH_TRACE_
-    printf("lost connectionarenee\n");
-#endif
+            #ifdef _WITH_TRACE_
+        printf("succeded to detect arena\n");
+    #endif
+            draw_arena(&imageoriginal, &imagesortie, &arene);
+            Jpg imagecompress;
+            compress_image(&imagesortie, &imagecompress);
+            send_message_to_monitor(HEADER_STM_IMAGE, &imagecompress);
+            rt_sem_p(&sem_arena, TM_INFINITE);
+    #ifdef _WITH_TRACE_
+        printf("send arene\n");
+    #endif
+                 
+            if (arenereponse == 0) {
+                //infirm
+                rt_mutex_acquire(&mutex_drawarena, TM_INFINITE);
+                drawArena = false;
+                rt_mutex_release(&mutex_drawarena);
 
+    #ifdef _WITH_TRACE_
+        printf("infirm arene\n");
+    #endif
+            } else if (arenereponse == 1) {
+                rt_mutex_acquire(&mutex_drawarena, TM_INFINITE);
+                drawArena = true;
+                rt_mutex_release(&mutex_drawarena);
+                
+    #ifdef _WITH_TRACE_
+        printf("confirm arene\n");
+    #endif
+            } else {
+                // lost connection
+    #ifdef _WITH_TRACE_
+        printf("lost connectionarenee\n");
+    #endif
+            }
         }
+        
+        rt_mutex_acquire(&mutex_getimage, TM_INFINITE);
+        getimage = true;
+        rt_mutex_release(&mutex_getimage);
+
+        #ifdef _WITH_TRACE_
+            printf("fin th_arene\n");
+        #endif
     }
-    rt_mutex_acquire(&mutex_getimage, TM_INFINITE);
-    getimage = true;
-    rt_mutex_release(&mutex_getimage);
 }
 
 void check_connection(int err) {
@@ -413,7 +469,9 @@ void check_connection(int err) {
         rt_mutex_acquire(&mutex_failedCom, TM_INFINITE);
         failedCom++;
         rt_mutex_release(&mutex_failedCom);
-
+#ifdef _WITH_TRACE_
+        printf("lost connection dfsdlfsdfsd\n");
+    #endif
         set_msgToMon_header(&msg, HEADER_STM_NO_ACK);
         write_in_queue(&q_messageToMon, msg);
     }

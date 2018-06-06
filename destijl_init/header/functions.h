@@ -44,6 +44,9 @@ extern RT_MUTEX mutex_robotStarted;
 extern RT_MUTEX mutex_move;
 extern RT_MUTEX mutex_failedCom;
 extern RT_MUTEX mutex_getimage;
+extern RT_MUTEX mutex_arenereponse;
+extern RT_MUTEX mutex_drawarena;
+
 
 extern RT_SEM sem_barrier;
 extern RT_SEM sem_openComRobot;
@@ -65,6 +68,9 @@ extern int failedCom;
 extern bool getimage;
 extern int arenereponse;
 extern int MSG_QUEUE_SIZE;
+extern Camera c;
+extern bool drawArena;
+extern Arene arene;
 
 extern int PRIORITY_TSERVER;
 extern int PRIORITY_TOPENCOMROBOT;
