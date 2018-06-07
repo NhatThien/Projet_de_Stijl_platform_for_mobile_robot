@@ -39,14 +39,14 @@ extern RT_TASK th_move;
 extern RT_TASK th_checkBat;
 extern RT_TASK th_openCam;
 extern RT_TASK th_position;
+extern RT_TASK th_closeCam;
+extern RT_TASK th_closeComRobot;
+
 
 extern RT_MUTEX mutex_robotStarted;
 extern RT_MUTEX mutex_move;
 extern RT_MUTEX mutex_failedCom;
 extern RT_MUTEX mutex_getimage;
-extern RT_MUTEX mutex_arenereponse;
-extern RT_MUTEX mutex_drawarena;
-
 
 extern RT_SEM sem_barrier;
 extern RT_SEM sem_openComRobot;
@@ -54,10 +54,10 @@ extern RT_SEM sem_serverOk;
 extern RT_SEM sem_startRobot;
 extern RT_SEM sem_openCam;
 extern RT_SEM sem_ask_arena;
-extern RT_SEM sem_computePosition;
-extern RT_SEM sem_stopComputePos;
 extern RT_SEM sem_arena;
 extern RT_SEM sem_closeCam;
+extern RT_SEM sem_closeComRobot;
+extern RT_SEM sem_comLost;
 
 extern RT_QUEUE q_messageToMon;
 
@@ -71,6 +71,8 @@ extern int MSG_QUEUE_SIZE;
 extern Camera c;
 extern bool drawArena;
 extern Arene arene;
+extern bool computePos;
+extern Position p;
 
 extern int PRIORITY_TSERVER;
 extern int PRIORITY_TOPENCOMROBOT;
@@ -89,7 +91,8 @@ void f_checkBat(void *arg);
 void f_openCam(void *arg);
 void f_arene(void *arg);
 void f_position(void *arg);
-void check_connection (int err);
+void f_closeCam(void *arg);
+void f_closeComRobot(void *arg);
+void f_close(void *arg);
 
 #endif /* FUNCTIONS_H */
-
