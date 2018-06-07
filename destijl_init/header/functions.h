@@ -41,6 +41,7 @@ extern RT_TASK th_openCam;
 extern RT_TASK th_position;
 extern RT_TASK th_closeCam;
 extern RT_TASK th_closeComRobot;
+extern RT_TASK th_close;
 
 
 extern RT_MUTEX mutex_robotStarted;

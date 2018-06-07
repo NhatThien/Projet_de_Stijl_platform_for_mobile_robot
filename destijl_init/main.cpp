@@ -31,11 +31,12 @@ RT_TASK th_arene;
 RT_TASK th_position;
 RT_TASK th_closeCam;
 RT_TASK th_closeComRobot;
+RT_TASK th_close;
 
 
 // Déclaration des priorités des taches
 int PRIORITY_TSERVER = 30;
-int PRIORITY_TOPENCOMROBOT = 20;
+int PRIORITY_TOPENCOMROBOT = 21;
 int PRIORITY_TMOVE = 12;
 int PRIORITY_TSENDTOMON = 25;
 int PRIORITY_TRECEIVEFROMMON = 22;
@@ -45,7 +46,8 @@ int PRIORITY_TOPENCAM = 18;
 int PRIORITY_TARENE = 16; 
 int PRIORITY_TPOSITION= 15; 
 int PRIORITY_TCLOSECAM= 19; 
-int PRIORITY_TCLOSECOMROBOT= 22; 
+int PRIORITY_TCLOSECOMROBOT= 22;
+int PRIORITY_TCLOSE= 29; 
 
 
 RT_MUTEX mutex_robotStarted;
@@ -235,6 +237,10 @@ void initStruct(void) {
         printf("Error task create: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
+	if (err = rt_task_create(&th_close, "th_close", 0, PRIORITY_TCLOSE, 0)) {
+        printf("Error task create: %s\n", strerror(-err));
+        exit(EXIT_FAILURE);
+    }
    
     /* Creation des files de messages */
     if (err = rt_queue_create(&q_messageToMon, "toto", MSG_QUEUE_SIZE * sizeof (MessageToRobot), MSG_QUEUE_SIZE, Q_FIFO)) {
@@ -285,6 +291,10 @@ void startTasks() {
         exit(EXIT_FAILURE);
     }
     if (err = rt_task_start(&th_closeComRobot, &f_closeComRobot, NULL)) {
+        printf("Error task start: %s\n", strerror(-err));
+        exit(EXIT_FAILURE);
+    }
+	if (err = rt_task_start(&th_close, &f_close, NULL)) {
         printf("Error task start: %s\n", strerror(-err));
         exit(EXIT_FAILURE);
     }
