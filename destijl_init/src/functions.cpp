@@ -146,6 +146,11 @@ void f_openComRobot(void * arg) {
     printf("Init %s\n", info.name);
     rt_sem_p(&sem_barrier, TM_INFINITE);
 
+#ifdef _WITH_TRACE_
+    printf("%s : waiting for sem_serverOk\n", info.name);
+#endif
+	rt_sem_p(&sem_serverOk, TM_INFINITE);
+
     while (1) {
 #ifdef _WITH_TRACE_
         printf("%s : Wait sem_openComRobot\n", info.name);
