@@ -340,12 +340,14 @@ void f_openCam(void * arg) {
                 
                 if (computePos){
                     drawPos = detect_position(&imageoriginal,&p);
+                    send_message_to_monitor(HEADER_STM_POS,&p);
                 }
                 
                 if (drawArena) {
                     draw_arena(&imageoriginal, &imagesortie, &arene);
                     if (drawPos){
                         draw_position(&imagesortie,&imagePosition,&p);
+                        send_message_to_monitor(HEADER_STM_POS,&p);
                         compress_image(&imagePosition, &imagecompress);
                     }
                     else{
